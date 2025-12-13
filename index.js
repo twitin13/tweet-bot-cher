@@ -1,39 +1,45 @@
-import { TwitterApi } from 'twitter-api-v2';
-import fs from 'fs';
+import fs from "fs";
+import { TwitterApi } from "twitter-api-v2";
 
-// Ambil environment variables dari GitHub Secrets
+// === X CLIENT ===
 const client = new TwitterApi({
-  appKey: process.env.TWITTER_API_KEY,
-  appSecret: process.env.TWITTER_API_SECRET,
-  accessToken: process.env.TWITTER_ACCESS_TOKEN,
-  accessSecret: process.env.TWITTER_ACCESS_SECRET,
+  appKey: process.env.X_API_KEY,
+  appSecret: process.env.X_API_SECRET,
+  accessToken: process.env.X_ACCESS_TOKEN,
+  accessSecret: process.env.X_ACCESS_SECRET,
 });
+const rwClient = client.readWrite;
 
-(async () => {
+async function main() {
   try {
-    // 📝 Isi tweet kamu di sini (nanti aku bantu isi sesuai request kamu)
-    const textTweet = `
-POINT COFFEE DISKON jadi 2K aja bisa pick up ☕ 🚚
+    // baca caption
+    const captions = JSON.parse(fs.readFileSync("./captions.json", "utf8"));
 
-‼️ Klaim voucher nya disini sebelum habis 👇👇
-https://spf.shopee.co.id/5AkOzg1J7N
-https://spf.shopee.co.id/5AkOzg1J7N
+    // baca gambar
+    const images = fs
+      .readdirSync("./images")
+      .filter(f => f.match(/\.(jpg|jpeg|png)$/i));
 
-t. Jual beli daget gofood grabfood kode promo go grab shopee food sfood voucher gacoan gojek 
-`;
+    if (images.length === 0) {
+      throw new Error("Folder images kosong");
+    }
 
-    // 📸 Upload 1 gambar dari repo
-    const mediaId = await client.v1.uploadMedia('1.jpg');
+    // pilih random
+    const image = images[Math.floor(Math.random() * images.length)];
+    const caption = captions[image] || "";
 
-    // 🐦 Kirim tweet dengan teks + gambar
-    const tweet = await client.v2.tweet({
-      text: textTweet,
+    const mediaId = await rwClient.v1.uploadMedia(`./images/${image}`);
+
+    await rwClient.v2.tweet({
+      text: caption,
       media: { media_ids: [mediaId] },
     });
 
-    console.log('✅ Tweet terkirim:', tweet.data.id);
-  } catch (error) {
-    console.error('❌ Gagal kirim tweet:', error);
+    console.log("✅ Tweet terkirim:", image);
+  } catch (err) {
+    console.error("❌ Error:", err);
+    process.exit(1);
   }
-})();
+}
 
+main();
